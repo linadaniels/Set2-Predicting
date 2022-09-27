@@ -26,7 +26,7 @@ colnames(train_hogares)
 head(train_hogares[c("id","Ingtotug","Ingtot_hogar")])
 
 #Calculo de pobreza 
-# se observa en la base train       33.024 hogares pobres y 131.936 hogares no pobres
+#Se observa en la base train        33.024 hogares pobres y 131.936 hogares no pobres
 table(train_hogares$Pobre)
 #Calculo de pobreza con pobre_hand  33.024 hogares pobres y 131.936 hogares no pobres
 train_hogares<- train_hogares %>% mutate(Pobre_hand=ifelse(Ingpcug<Lp,1,0))
@@ -34,5 +34,7 @@ table(train_hogares$Pobre_hand)
 #Analizando "Pobre" y "Pobre_hand para comprobar si lo anterior es cierto comparamos "Pobre" con una variable "Pobre_hand" crada por nosotros
 #vemos ue coinciden 
 table(train_hogares$Pobre,train_hogares$Pobre_hand)
+
+
 
 
