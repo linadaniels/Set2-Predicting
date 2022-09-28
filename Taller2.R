@@ -34,7 +34,6 @@ table(train_hogares$Pobre_hand)
 #Analizando "Pobre" y "Pobre_hand para comprobar si lo anterior es cierto comparamos "Pobre" con una variable "Pobre_hand" crada por nosotros
 #vemos ue coinciden 
 table(train_hogares$Pobre,train_hogares$Pobre_hand)
-
-
+train_hogares$Indigente
 
 
