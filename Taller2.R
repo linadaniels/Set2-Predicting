@@ -36,4 +36,115 @@ table(train_hogares$Pobre_hand)
 table(train_hogares$Pobre,train_hogares$Pobre_hand)
 train_hogares$Indigente
 
+####Emparejar Bases####
+
+
+####train_hogares####
+
+#Estructura
+glimpse(train_hogares)
+glimpse(test_hogares)
+
+#Vamos a equilibrar train y test para no usar variables de train que no
+#están en test.
+#Pobre y Ingpcug se quedan en train porque son nuestras variables de interés
+#Se quitan Ingtotug, Ingtotugarr, Indigente, Npobres, Nindigentes
+train_hogares <- select(train_hogares, -c(Ingtotug, Ingtotugarr, Indigente, Npobres, Nindigentes))
+colnames(train_hogares)
+colnames(test_hogares)
+
+#NAs: P5100, p5130, p5140 tienen NAs
+sapply(train_hogares, function(x) sum(is.na(x)))
+#Estas variables parecen no ser relevantes para predecir el ingreso
+#ya que hablan de los pagos por amortización, el valor estimado del arriendo
+#de sus viviendas y el pago mensual por arriendo.
+#podrían dropearse
+#También dropeamos Dominio, ya que para controlar por la ubicación se tiene
+#Depto y Cabecera
+train_hogares <- select(train_hogares, -c(Dominio, P5100, P5130, P5140, Fex_c, Fex_dpto))
+
+# Arreglamos la variable Clase (dicótoma) para que sean 1 y 0
+#tabulación de Clase
+train_hogares %>%
+  group_by(Clase) %>%
+  summarise(n = n()) %>%
+  mutate(
+    totalN = (cumsum(n)),
+    percent = round((n / sum(n)), 3),
+    cumuPer = round(cumsum(freq = n / sum(n)), 3)) 
+#Convertimos en double
+train_hogares[, "Clase"] <- as.double(train_hogares[, "Clase", drop = T])
+#Convertimos en dummy
+variables_dicotomas <- c("Clase")
+
+train_hogares[,variables_dicotomas] = train_hogares[,variables_dicotomas] - 1
+
+#Definimos variables categoricas
+variables_categoricas <- c("P5090", "Depto")
+for (v in variables_categoricas) {
+  train_hogares[, v] <- as.factor(train_hogares[, v, drop = T])
+}
+
+#Dumificamos la base
+
+#convertimos id en string
+
+tr_hog_d <- model.matrix(~ Clase + P5000 + P5010 + P5090 + Nper + 
+                           Npersug + Ingpcug + Li + 
+                           Lp + Pobre + Depto, train_hogares) %>%
+  as.data.frame()
+
+colnames(tr_hog_d)
+
+glimpse(tr_hog_d)
+
+
+
+####test_hogares####
+
+#Estructura
+glimpse(train_hogares)
+glimpse(test_hogares)
+
+#NAs: P5100, p5130, p5140 tienen NAs
+sapply(test_hogares, function(x) sum(is.na(x)))
+#Estas variables parecen no ser relevantes para predecir el ingreso
+#ya que hablan de los pagos por amortización, el valor estimado del arriendo
+#de sus viviendas y el pago mensual por arriendo.
+#podrían dropearse
+test_hogares <- select(test_hogares, -c(Dominio, P5100, P5130, P5140, Fex_c, Fex_dpto))
+
+# Arreglamos la variable Clase (dicótoma) para que sean 1 y 0
+#tabulación de Clase
+test_hogares %>%
+  group_by(Clase) %>%
+  summarise(n = n()) %>%
+  mutate(
+    totalN = (cumsum(n)),
+    percent = round((n / sum(n)), 3),
+    cumuPer = round(cumsum(freq = n / sum(n)), 3)) 
+#Convertimos en double
+test_hogares[, "Clase"] <- as.double(test_hogares[, "Clase", drop = T])
+#Convertimos en dummy
+variables_dicotomas <- c("Clase")
+
+test_hogares[,variables_dicotomas] = test_hogares[,variables_dicotomas] - 1
+
+#Definimos variables categoricas
+variables_categoricas <- c("P5090", "Depto")
+for (v in variables_categoricas) {
+  test_hogares[, v] <- as.factor(test_hogares[, v, drop = T])
+}
+
+#Dumificamos la base
+
+te_hog_d <- model.matrix(~ Clase + P5000 + P5010 + P5090 + Nper + 
+                           Npersug + Li + Lp + Depto, train_hogares) %>%
+  as.data.frame()
+
+colnames(te_hog_d)
+colnames(tr_hog_d)
+glimpse(te_hog_d)
+glimpse(tr_hog_d)
+
 
