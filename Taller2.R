@@ -51,7 +51,7 @@ summary(jefe_hombre)
 #unirla la nueva variable a la base de hogares
 train_hogares<-left_join(train_hogares,jefe_hombre)
 colnames(train_hogares)
-head(train_hogares[c("id","Ingtotug","Ingtot_hogar","jefe_hombre")])
+head(train_hogares[c("id","Ingtotug","jefe_hombre")])
 
 
 ####Emparejar Bases####
