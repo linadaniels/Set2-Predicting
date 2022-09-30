@@ -3,7 +3,8 @@
 # paquetes
 install.packages("here")
 install.packages("caret")
-requiere("dplyr")
+require("caret")
+require("dplyr")
 require("here")
 require("here")
 require("tidyverse")
@@ -37,6 +38,21 @@ table(train_hogares$Pobre_hand)
 #vemos ue coinciden 
 table(train_hogares$Pobre,train_hogares$Pobre_hand)
 train_hogares$Indigente
+
+##CREAR jefe hombre del hogar
+train_personas <- mutate(train_personas, jefehogar = ifelse(Orden == 1,1,0))
+train_personas <- mutate(train_personas, jefehombre = ifelse(jefehogar == 1 & P6020 ==1,1,0))
+train_personas$jefehombre
+
+#crear una variable xsl hogar a partir de la base de persona
+jefe_hombre<-train_personas %>% group_by(id)  
+summary(jefe_hombre)
+
+#unirla la nueva variable a la base de hogares
+train_hogares<-left_join(train_hogares,jefe_hombre)
+colnames(train_hogares)
+head(train_hogares[c("id","Ingtotug","Ingtot_hogar","jefe_hombre")])
+
 
 ####Emparejar Bases####
 
