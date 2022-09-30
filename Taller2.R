@@ -218,12 +218,21 @@ apa.reg.table(reg_ols, filename= "regresion_ingreso.doc", table.number= 1)
 
 
 #RIDGE
-ridge <- train(
-  Ingpcug ~., data = train_hogares, method = "glmnet",
-  trControl = trainControl("cv", number = 10),
-  tuneGrid = expand.grid(alpha = 0,lambda=lambda), preProcess = c("center", "scale")
+#ridge <- train(
+#  Ingpcug ~., data = train_hogares, method = "glmnet",
+#  trControl = trainControl("cv", number = 10),
+#  tuneGrid = expand.grid(alpha = 0,lambda=lambda), preProcess = c("center", "scale")
+#)
+#ridge
+install.packages("glmnet")
+require("glmnet")
+modelo_ridge <- glmnet(
+  x = train_hogares,
+  y = train_hogares$Ingpcug,
+  alpha = 0,
+  nlambda = 300,
+  standardize = FALSE
 )
-ridge
-
+modelo_ridge
 
 
