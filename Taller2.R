@@ -1,5 +1,8 @@
 ## Taller 2
 
+#clear all
+rm(list = ls())
+
 # paquetes
 install.packages("here")
 install.packages("caret")
@@ -45,15 +48,34 @@ train_personas <- mutate(train_personas, jefehombre = ifelse(jefehogar == 1 & P6
 train_personas$jefehombre
 
 #crear una variable xsl hogar a partir de la base de persona
-jefe_hombre<-train_personas %>% group_by(id)  
-summary(jefe_hombre)
+jefehombrehogar<-train_personas %>% group_by(id) %>% summarize(jefehombre=sum(jefehombre,na.rm = TRUE))  
+summary(jefehombrehogar)
 
 #unirla la nueva variable a la base de hogares
-train_hogares<-left_join(train_hogares,jefe_hombre)
+train_hogares<-left_join(train_hogares,jefehombrehogar)
 colnames(train_hogares)
-head(train_hogares[c("id","Ingtotug","jefe_hombre")])
+head(train_hogares[c("Ingtotug","jefehombre")])
+glimpse(train_hogares)
 #eliminar NA en la variable de interes
 train_hogares <- train_hogares[!is.na(train_hogares$Ingpcug),]
+
+#Variable informalidad usando p6920
+train_personas <- mutate(train_personas, formal = ifelse(P6920 == 1
+          | P6920==3,1,0))
+train_personas$formal
+train_personas <- mutate(train_personas, jefeformal = ifelse(jefehogar == 1 & formal ==1,1,0))
+train_personas$jefeformal
+  #Mezclamos Jefe con formal
+jefeformal<-train_personas %>% group_by(id) %>% summarize(jefeformal=sum(jefeformal,na.rm = TRUE))  
+summary(jefehombrehogar)
+  #unirla la nueva variable a la base de hogares
+train_hogares<-left_join(train_hogares,jefeformal)
+colnames(train_hogares)
+
+#Ratio personas-cuartos
+train_hogares <- mutate(train_hogares, persxcuarto = Nper/P5010)
+train_hogares$persxcuarto
+
 
 ####Emparejar Bases####
 
@@ -169,6 +191,7 @@ glimpse(tr_hog_d)
 ####ahora usamos metodos de clasificacion de variable
 
 #FORWARD
+train_hogares <- select(train_hogares, -id)
 forward<- train(Ingpcug ~ ., data = train_hogares,
                 method = "leapForward",
                 trControl = trainControl(method = "cv", number = 10))
