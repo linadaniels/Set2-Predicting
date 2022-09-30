@@ -6,6 +6,8 @@ rm(list = ls())
 # paquetes
 install.packages("here")
 install.packages("caret")
+install.packages("leaps")
+require("leaps")
 require("caret")
 require("dplyr")
 require("here")
@@ -67,7 +69,7 @@ train_personas <- mutate(train_personas, jefeformal = ifelse(jefehogar == 1 & fo
 train_personas$jefeformal
   #Mezclamos Jefe con formal
 jefeformal<-train_personas %>% group_by(id) %>% summarize(jefeformal=sum(jefeformal,na.rm = TRUE))  
-summary(jefehombrehogar)
+summary(jefeformal)
   #unirla la nueva variable a la base de hogares
 train_hogares<-left_join(train_hogares,jefeformal)
 colnames(train_hogares)
@@ -195,8 +197,15 @@ train_hogares <- select(train_hogares, -id)
 forward<- train(Ingpcug ~ ., data = train_hogares,
                 method = "leapForward",
                 trControl = trainControl(method = "cv", number = 10))
-forward
-summary(forward$finalModel)
+forward 
+summary(forward)
+str<-str(forward)
+
+## out
+data(forward)
+sumtable(forward)
+vartable <- vtable(forward,out='return')
+
 
 #OLS 
 ols <- train(Ingpcug ~ ., 
