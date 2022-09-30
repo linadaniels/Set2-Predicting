@@ -207,12 +207,15 @@ sumtable(forward)
 vartable <- vtable(forward,out='return')
 
 
-#OLS 
-ols <- train(Ingpcug ~ ., 
-             data = train_hogares,
-             trControl = trainControl(method = "cv", number = 10),
-             method = "lm")
-ols
+#OLS
+install.packages("apaTables")
+library(apaTables)
+
+reg_ols<-lm(Ingpcug ~ jefehombre+jefeformal+persxcuarto, data = train_hogares)
+reg_ols
+summary(reg_ols)$coefficient
+apa.reg.table(reg_ols, filename= "regresion_ingreso.doc", table.number= 1)
+
 
 #RIDGE
 ridge <- train(
