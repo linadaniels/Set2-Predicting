@@ -52,7 +52,8 @@ summary(jefe_hombre)
 train_hogares<-left_join(train_hogares,jefe_hombre)
 colnames(train_hogares)
 head(train_hogares[c("id","Ingtotug","jefe_hombre")])
-
+#eliminar NA en la variable de interes
+train_hogares <- train_hogares[!is.na(train_hogares$Ingpcug),]
 
 ####Emparejar Bases####
 
@@ -177,7 +178,13 @@ ols <- train(Ingpcug ~ .,
              data = train_hogares,
              trControl = trainControl(method = "cv", number = 10),
              method = "lm")
-
+#Ridge
+ridge <- train(
+  Ingpcug ~., data = train_hogares, method = "glmnet",
+  trControl = trainControl("cv", number = 10),
+  tuneGrid = expand.grid(alpha = 0,lambda=lambda), preProcess = c("center", "scale")
+)
+ridge
 
 
 
