@@ -166,19 +166,23 @@ colnames(tr_hog_d)
 glimpse(te_hog_d)
 glimpse(tr_hog_d)
 
-#ahora usamos metodos de clasificacion de variable
-#forward
+####ahora usamos metodos de clasificacion de variable
+
+#FORWARD
 forward<- train(Ingpcug ~ ., data = train_hogares,
                 method = "leapForward",
                 trControl = trainControl(method = "cv", number = 10))
 forward
 summary(forward$finalModel)
-#ols
+
+#OLS 
 ols <- train(Ingpcug ~ ., 
              data = train_hogares,
              trControl = trainControl(method = "cv", number = 10),
              method = "lm")
-#Ridge
+ols
+
+#RIDGE
 ridge <- train(
   Ingpcug ~., data = train_hogares, method = "glmnet",
   trControl = trainControl("cv", number = 10),
