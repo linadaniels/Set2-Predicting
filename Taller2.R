@@ -2,6 +2,8 @@
 
 # paquetes
 install.packages("here")
+install.packages("caret")
+requiere("dplyr")
 require("here")
 require("here")
 require("tidyverse")
@@ -46,8 +48,8 @@ glimpse(train_hogares)
 glimpse(test_hogares)
 
 #Vamos a equilibrar train y test para no usar variables de train que no
-#están en test.
-#Pobre y Ingpcug se quedan en train porque son nuestras variables de interés
+#est?n en test.
+#Pobre y Ingpcug se quedan en train porque son nuestras variables de inter?s
 #Se quitan Ingtotug, Ingtotugarr, Indigente, Npobres, Nindigentes
 train_hogares <- select(train_hogares, -c(Ingtotug, Ingtotugarr, Indigente, Npobres, Nindigentes))
 colnames(train_hogares)
@@ -56,15 +58,15 @@ colnames(test_hogares)
 #NAs: P5100, p5130, p5140 tienen NAs
 sapply(train_hogares, function(x) sum(is.na(x)))
 #Estas variables parecen no ser relevantes para predecir el ingreso
-#ya que hablan de los pagos por amortización, el valor estimado del arriendo
+#ya que hablan de los pagos por amortizaci?n, el valor estimado del arriendo
 #de sus viviendas y el pago mensual por arriendo.
-#podrían dropearse
-#También dropeamos Dominio, ya que para controlar por la ubicación se tiene
+#podr?an dropearse
+#Tambi?n dropeamos Dominio, ya que para controlar por la ubicaci?n se tiene
 #Depto y Cabecera
 train_hogares <- select(train_hogares, -c(Dominio, P5100, P5130, P5140, Fex_c, Fex_dpto))
 
-# Arreglamos la variable Clase (dicótoma) para que sean 1 y 0
-#tabulación de Clase
+# Arreglamos la variable Clase (dic?toma) para que sean 1 y 0
+#tabulaci?n de Clase
 train_hogares %>%
   group_by(Clase) %>%
   summarise(n = n()) %>%
@@ -109,13 +111,13 @@ glimpse(test_hogares)
 #NAs: P5100, p5130, p5140 tienen NAs
 sapply(test_hogares, function(x) sum(is.na(x)))
 #Estas variables parecen no ser relevantes para predecir el ingreso
-#ya que hablan de los pagos por amortización, el valor estimado del arriendo
+#ya que hablan de los pagos por amortizaci?n, el valor estimado del arriendo
 #de sus viviendas y el pago mensual por arriendo.
-#podrían dropearse
+#podr?an dropearse
 test_hogares <- select(test_hogares, -c(Dominio, P5100, P5130, P5140, Fex_c, Fex_dpto))
 
-# Arreglamos la variable Clase (dicótoma) para que sean 1 y 0
-#tabulación de Clase
+# Arreglamos la variable Clase (dic?toma) para que sean 1 y 0
+#tabulaci?n de Clase
 test_hogares %>%
   group_by(Clase) %>%
   summarise(n = n()) %>%
