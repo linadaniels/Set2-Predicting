@@ -235,4 +235,153 @@ modelo_ridge <- glmnet(
 )
 modelo_ridge
 
+####División train y estandarización####
+library(pacman)
+p_load(fastDummies, caret, glmnet, MLmetrics)
 
+#Dividimos train_hogares en dos
+set.seed(666)
+id_train <- sample(1:nrow(train_hogares), size = 0.7*nrow(train_hogares), 
+                   replace = FALSE)
+
+train <- tr_hog_d[id_train, ]
+test  <- tr_hog_d[-id_train, ]
+
+# y_train y x_train
+#y_train -> modelo predicción ingreso
+y_train <- train[,"Ingpcug"]
+#Vector de X
+X_train <- select(train, -c(Pobre, Ingpcug))
+#y_test -> modelo con ingreso per capita
+y_test <- test[,"Ingpcug"]
+#Vector  de X test
+X_test <- select(test,-c(Pobre, Ingpcug)) 
+
+# Estandarizamos la base de datos. 
+# Necesitamos estandarizar
+#####Estandarización#####
+mu <- mean(X_train$P5000)
+sigma <- sd(X_train$P5000)
+X_train$P5000 <- (X_train$P5000 - mu)/sigma
+X_test$P5000 <- (X_test$P5000 - mu)/sigma
+
+mu <- mean(X_train$P5010)
+sigma <- sd(X_train$P5010)
+X_train$P5010 <- (X_train$P5010 - mu)/sigma
+X_test$P5010 <- (X_test$P5010 - mu)/sigma
+
+mu <- mean(X_train$Nper)
+sigma <- sd(X_train$Nper)
+X_train$Nper <- (X_train$Nper - mu)/sigma
+X_test$Nper <- (X_test$Nper - mu)/sigma
+
+mu <- mean(X_train$Npersug)
+sigma <- sd(X_train$Npersug)
+X_train$Npersug <- (X_train$Npersug - mu)/sigma
+X_test$Npersug <- (X_test$Npersug - mu)/sigma
+
+mu <- mean(X_train$Li)
+sigma <- sd(X_train$Li)
+X_train$Li <- (X_train$Li - mu)/sigma
+X_test$Li <- (X_test$Li - mu)/sigma
+
+glimpse(X_train)
+glimpse(X_test)
+
+####Lasso####
+# Para obtener un ajuste con regularización Lasso se indica argumento alpha = 1.
+# Si no se especifica valor de lambda, se selecciona un rango automático.
+modelo_lasso <- glmnet(
+  x = X_train,
+  y = y_train,
+  alpha = 1,
+  nlambda = 300,
+  standardize = FALSE,
+  na.rm = TRUE
+)
+
+# Analicemos cómo cambian los coeficientes para diferentes lambdas
+regularizacion <- modelo_lasso$beta %>% 
+  as.matrix() %>%
+  t() %>% 
+  as_tibble() %>%
+  mutate(lambda = modelo_lasso$lambda)
+
+regularizacion <- regularizacion %>%
+  pivot_longer(
+    cols = !lambda, 
+    names_to = "predictor",
+    values_to = "coeficientes"
+  )
+
+regularizacion %>%
+  ggplot(aes(x = lambda, y = coeficientes, color = predictor)) +
+  geom_line() +
+  scale_x_log10(
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10",
+                                  scales::math_format(10^.x))
+  ) +
+  labs(title = "Coeficientes del modelo en función de la regularización (Lasso)", x = "Lambda", y = "Coeficientes") +
+  theme_bw() +
+  theme(legend.position="bottom")
+# ¿Cómo escoger el mejor lambda? 
+# Veamos cuál es el mejor prediciendo (fuera de muestra)
+# En este caso vamos a crear la predicción para cada uno de los
+# 300 lambdas seleccionados
+predicciones_lasso <- predict(modelo_lasso, 
+                              newx = as.matrix(X_test))
+lambdas_lasso <- modelo_lasso$lambda
+
+# Cada predicción se va a evaluar
+resultados_lasso <- data.frame()
+for (i in 1:length(lambdas_lasso)) {
+  l <- lambdas_lasso[i]
+  y_hat_out2 <- predicciones_lasso[, i]
+  r22 <- R2_Score(y_pred = y_hat_out2, y_true = y_test)
+  rmse2 <- RMSE(y_pred = y_hat_out2, y_true = y_test)
+  resultado <- data.frame(Modelo = "Lasso",
+                          Muestra = "Fuera",
+                          Lambda = l,
+                          R2_Score = r22, 
+                          RMSE = rmse2)
+  resultados_lasso <- bind_rows(resultados_lasso, resultado)
+}
+#RMSE
+ggplot(resultados_lasso, aes(x = Lambda, y = RMSE)) +
+  geom_point() +
+  geom_line() +
+  theme_bw() +
+  scale_y_continuous(labels = scales::comma)
+#R2
+ggplot(resultados_lasso, aes(x = Lambda, y = R2_Score)) +
+  geom_point() +
+  geom_line() +
+  theme_bw() +
+  scale_y_continuous(labels = scales::comma)
+
+filtro <- resultados_lasso$RMSE == min(resultados_lasso$RMSE)
+mejor_lambda_lasso <- resultados_lasso[filtro, "Lambda"]
+
+# Guardamos el mejor Lasso
+y_hat_in2 <- predict.glmnet(modelo_lasso,
+                            newx = as.matrix(X_train),
+                            s = mejor_lambda_lasso)
+y_hat_out2 <- predict.glmnet(modelo_lasso,
+                             newx = as.matrix(X_test),
+                             s = mejor_lambda_lasso)
+
+# Métricas dentro y fuera de muestra. Paquete MLmetrics
+r2_in2 <- R2_Score(y_pred = exp(y_hat_in2), y_true = exp(y_train))
+rmse_in2 <- RMSE(y_pred = exp(y_hat_in2), y_true = exp(y_train))
+
+r2_out2 <- R2_Score(y_pred = exp(y_hat_out2), y_true = exp(y_test))
+rmse_out2 <- RMSE(y_pred = exp(y_hat_out2), y_true = exp(y_test))
+
+# Guardamos el desempeño
+resultados2 <- data.frame(Modelo = "Lasso", 
+                          Muestra = "Dentro",
+                          R2_Score = r2_in2, RMSE = rmse_in2) %>%
+  rbind(data.frame(Modelo = "Lasso", 
+                   Muestra = "Fuera",
+                   R2_Score = r2_out2, RMSE = rmse_out2))
