@@ -228,20 +228,22 @@ colnames(tr_hog_d)
 glimpse(te_hog_d)
 glimpse(tr_hog_d)
 
-### Estructura
-str_test<-str(te_hog_d)
+### Estadisticas descriptivas train
 str_train<-str(tr_hog_d)
-# tabla de estadisticas descriptivas
-sumtable(te_hog_d)
 sumtable(tr_hog_d)
-
-# exportamos
-data(te_hog_d)
+#exportamos
 data(tr_hog_d)
-sumtable(te_hog_d)
-vartable <- vtable(te_hog_d,out='return')
 sumtable(tr_hog_d)
 vartable <- vtable(tr_hog_d,out='return')
+
+##Estadisticas descriptivas test
+str_test<-str(te_hog_d)
+sumtable(te_hog_d)
+# exportamos
+data(te_hog_d)
+sumtable(te_hog_d)
+vartable <- vtable(te_hog_d,out='return')
+
 
 
 
