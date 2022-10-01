@@ -267,10 +267,10 @@ str<-str(forward)
 install.packages("apaTables")
 library(apaTables)
 
-reg_ols<-lm(Ingpcug ~ P5010+Nper+Ingtot_hogar+persxcuarto, data = train_hogares)
-reg_ols
-summary(reg_ols)$coefficient
-apa.reg.table(reg_ols, filename= "regresion_ingreso.doc", table.number= 1)
+regols<-lm(Ingpcug ~ P5010+Nper+Ingtot_hogar+persxcuarto, data = train_hogares)
+regols
+summary(regols)$coefficient
+apa.reg.table(regols, filename= "regresionols_ingreso.doc", table.number= 1)
 
 
 #RIDGE
