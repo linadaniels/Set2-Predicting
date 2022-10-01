@@ -7,6 +7,8 @@ rm(list = ls())
 install.packages("here")
 install.packages("caret")
 install.packages("leaps")
+install.packages("vtable")
+library(vtable)
 require("leaps")
 require("caret")
 require("dplyr")
@@ -20,9 +22,9 @@ train_hogares <- readRDS("C:/Users/linit/Documents/semestre 8/Big Data/Taller 2/
 train_personas <- readRDS("C:/Users/linit/Documents/semestre 8/Big Data/Taller 2/data/data/train_personas.Rds")
 
 ########### TRAIN
-#revisiÃ³n de variables, luego id del hogar y orden identifaciÃ³n de persona
+#revisiÃ³n de variables
 colnames(train_hogares)
-colnames(train_personas)[1:2]
+colnames(train_personas)
 
 #crear una variable que sea la suma de los ingresos de los individuos en el hogar a partir de la base de persona
 sum_ingresos<-train_personas %>% group_by(id) %>% summarize(Ingtot_hogar=sum(Ingtot,na.rm = TRUE)) 
@@ -78,7 +80,39 @@ colnames(train_hogares)
 train_hogares <- mutate(train_hogares, persxcuarto = Nper/P5010)
 train_hogares$persxcuarto
 
+#####Base TEST
 
+##CREAR jefe hombre del hogar
+test_personas <- mutate(test_personas, jefehogar = ifelse(Orden == 1,1,0))
+test_personas <- mutate(test_personas, jefehombre = ifelse(jefehogar == 1 & P6020 ==1,1,0))
+test_personas$jefehombre
+#crear una variable xsl hogar a partir de la base de persona
+jefehombrehogar<-test_personas %>% group_by(id) %>% summarize(jefehombre=sum(jefehombre,na.rm = TRUE))  
+summary(jefehombrehogar)
+#unirla la nueva variable a la base de hogares
+test_hogares<-left_join(test_hogares,jefehombrehogar)
+colnames(test_hogares)
+test_hogares$jefehombre
+glimpse(test_hogares)
+ 
+# CREAR informalindad usando p6920
+test_personas <- mutate(test_personas, formal = ifelse(P6920 == 1
+                                                      | P6920==3,1,0))
+test_personas$formal
+test_personas <- mutate(test_personas, jefeformal = ifelse(jefehogar == 1 & formal ==1,1,0))
+test_personas$jefeformal
+#Mezclamos Jefe con formal
+jefeformal<-test_personas %>% group_by(id) %>% summarize(jefeformal=sum(jefeformal,na.rm = TRUE))  
+summary(jefeformal)
+#unirla la nueva variable a la base de hogares
+test_hogares<-left_join(test_hogares,jefeformal)
+colnames(test_hogares)
+
+#Ratio personas-cuartos
+test_hogares <- mutate(test_hogares, persxcuarto = Nper/P5010)
+test_hogares$persxcuarto
+colnames(test_personas)
+test_personas$
 ####Emparejar Bases####
 
 
@@ -87,6 +121,8 @@ train_hogares$persxcuarto
 #Estructura
 glimpse(train_hogares)
 glimpse(test_hogares)
+colnames(test_personas)
+
 
 #Vamos a equilibrar train y test para no usar variables de train que no
 #est?n en test.
@@ -95,6 +131,7 @@ glimpse(test_hogares)
 train_hogares <- select(train_hogares, -c(Ingtotug, Ingtotugarr, Indigente, Npobres, Nindigentes))
 colnames(train_hogares)
 colnames(test_hogares)
+
 
 #NAs: P5100, p5130, p5140 tienen NAs
 sapply(train_hogares, function(x) sum(is.na(x)))
@@ -191,6 +228,24 @@ colnames(tr_hog_d)
 glimpse(te_hog_d)
 glimpse(tr_hog_d)
 
+### Estructura
+str_test<-str(te_hog_d)
+str_train<-str(tr_hog_d)
+# tabla de estadisticas descriptivas
+sumtable(te_hog_d)
+sumtable(tr_hog_d)
+
+# exportamos
+data(te_hog_d)
+data(tr_hog_d)
+sumtable(te_hog_d)
+vartable <- vtable(te_hog_d,out='return')
+sumtable(tr_hog_d)
+vartable <- vtable(tr_hog_d,out='return')
+
+
+
+
 ####ahora usamos metodos de clasificacion de variable
 
 #FORWARD
@@ -236,7 +291,7 @@ modelo_ridge <- glmnet(
 )
 modelo_ridge
 
-####División train y estandarización####
+####Divisi?n train y estandarizaci?n####
 library(pacman)
 p_load(fastDummies, caret, glmnet, MLmetrics)
 
@@ -252,7 +307,7 @@ train$Ingpcug <- ifelse(train$Ingpcug == 0, 0.000001, train$Ingpcug)
 test$Ingpcug <- ifelse(test$Ingpcug == 0, 0.000001, test$Ingpcug)
 
 # y_train y x_train
-#y_train -> modelo predicción ingreso
+#y_train -> modelo predicci?n ingreso
 y_train <- log(train[,"Ingpcug"])
 #Vector de X
 X_train <- select(train, -c(Pobre, Ingpcug))
@@ -265,7 +320,7 @@ X_test <- select(test,-c(Pobre, Ingpcug))
 
 # Estandarizamos la base de datos. 
 # Necesitamos estandarizar
-#####Estandarización#####
+#####Estandarizaci?n#####
 
 mu <- mean(X_train$P5000)
 sigma <- sd(X_train$P5000)
@@ -295,8 +350,8 @@ X_test$Li <- (X_test$Li - mu)/sigma
 glimpse(X_train)
 glimpse(X_test)
 
-####Regresión Lineal####
-# Analicemos regresión lineal
+####Regresi?n Lineal####
+# Analicemos regresi?n lineal
 train2 <- cbind(y_train, X_train)
 modelo_reg <- lm("y_train ~ -1 + .", data = train2)
 summary(modelo_reg)
@@ -310,32 +365,32 @@ df_coeficientes_reg %>%
              y = coeficiente)) +
   geom_col(fill = "darkblue") +
   coord_flip() +
-  labs(title = "Coeficientes del modelo de regresión", 
+  labs(title = "Coeficientes del modelo de regresi?n", 
        x = "Variables",
        y = "Coeficientes") +
   theme_bw()
 
-# Evaluamos el modelo de regresión lineal
+# Evaluamos el modelo de regresi?n lineal
 y_hat_in1 <- predict(modelo_reg, newdata = X_train)
 y_hat_out1 <- predict(modelo_reg, newdata = X_test)
 
-# Métricas dentro y fuera de muestra. Paquete MLmetrics
+# M?tricas dentro y fuera de muestra. Paquete MLmetrics
 r2_in1 <- R2_Score(y_pred = exp(y_hat_in1), y_true = exp(y_train))
 rmse_in1 <- RMSE(y_pred = exp(y_hat_in1), y_true = exp(y_train))
 
 r2_out1 <- R2_Score(y_pred = exp(y_hat_out1), y_true = exp(y_test))
 rmse_out1 <- RMSE(y_pred = exp(y_hat_out1), y_true = exp(y_test))
 
-resultados <- data.frame(Modelo = "Regresión lineal", 
+resultados <- data.frame(Modelo = "Regresi?n lineal", 
                          Muestra = "Dentro",
                          R2_Score = r2_in1, RMSE = rmse_in1) %>%
-  rbind(data.frame(Modelo = "Regresión lineal", 
+  rbind(data.frame(Modelo = "Regresi?n lineal", 
                    Muestra = "Fuera",
                    R2_Score = r2_out1, RMSE = rmse_out1))
 
 ####Lasso####
-# Para obtener un ajuste con regularización Lasso se indica argumento alpha = 1.
-# Si no se especifica valor de lambda, se selecciona un rango automático.
+# Para obtener un ajuste con regularizaci?n Lasso se indica argumento alpha = 1.
+# Si no se especifica valor de lambda, se selecciona un rango autom?tico.
 modelo_lasso <- glmnet(
   x = X_train,
   y = y_train,
@@ -344,7 +399,7 @@ modelo_lasso <- glmnet(
   standardize = FALSE
 )
 
-# Analicemos cómo cambian los coeficientes para diferentes lambdas
+# Analicemos c?mo cambian los coeficientes para diferentes lambdas
 regularizacion <- modelo_lasso$beta %>% 
   as.matrix() %>%
   t() %>% 
@@ -366,18 +421,18 @@ regularizacion %>%
     labels = scales::trans_format("log10",
                                   scales::math_format(10^.x))
   ) +
-  labs(title = "Coeficientes del modelo en función de la regularización (Lasso)", x = "Lambda", y = "Coeficientes") +
+  labs(title = "Coeficientes del modelo en funci?n de la regularizaci?n (Lasso)", x = "Lambda", y = "Coeficientes") +
   theme_bw() +
   theme(legend.position="bottom")
-# ¿Cómo escoger el mejor lambda? 
-# Veamos cuál es el mejor prediciendo (fuera de muestra)
-# En este caso vamos a crear la predicción para cada uno de los
+# ?C?mo escoger el mejor lambda? 
+# Veamos cu?l es el mejor prediciendo (fuera de muestra)
+# En este caso vamos a crear la predicci?n para cada uno de los
 # 300 lambdas seleccionados
 predicciones_lasso <- predict(modelo_lasso, 
                               newx = as.matrix(X_test))
 lambdas_lasso <- modelo_lasso$lambda
 
-# Cada predicción se va a evaluar
+# Cada predicci?n se va a evaluar
 resultados_lasso <- data.frame()
 for (i in 1:length(lambdas_lasso)) {
   l <- lambdas_lasso[i]
@@ -415,14 +470,14 @@ y_hat_out2 <- predict.glmnet(modelo_lasso,
                              newx = as.matrix(X_test),
                              s = mejor_lambda_lasso)
 
-# Métricas dentro y fuera de muestra. Paquete MLmetrics
+# M?tricas dentro y fuera de muestra. Paquete MLmetrics
 r2_in2 <- R2_Score(y_pred = exp(y_hat_in2), y_true = exp(y_train))
 rmse_in2 <- RMSE(y_pred = exp(y_hat_in2), y_true = exp(y_train))
 
 r2_out2 <- R2_Score(y_pred = exp(y_hat_out2), y_true = exp(y_test))
 rmse_out2 <- RMSE(y_pred = exp(y_hat_out2), y_true = exp(y_test))
 
-# Guardamos el desempeño
+# Guardamos el desempe?o
 resultados2 <- data.frame(Modelo = "Lasso", 
                           Muestra = "Dentro",
                           R2_Score = r2_in2, RMSE = rmse_in2) %>%
@@ -430,7 +485,7 @@ resultados2 <- data.frame(Modelo = "Lasso",
                    Muestra = "Fuera",
                    R2_Score = r2_out2, RMSE = rmse_out2))
 
-# Juntamos resultados con regresión lineal
+# Juntamos resultados con regresi?n lineal
 resultados <- rbind(resultados, resultados2)
 
 ####Ridge####
@@ -443,7 +498,7 @@ modelo_ridge <- glmnet(
   standardize = FALSE
 )
 
-# Analicemos cómo cambian los coeficientes para diferentes lambdas
+# Analicemos c?mo cambian los coeficientes para diferentes lambdas
 regularizacion2 <- modelo_ridge$beta %>% 
   as.matrix() %>%
   t() %>% 
@@ -465,19 +520,19 @@ regularizacion2 %>%
     labels = scales::trans_format("log10",
                                   scales::math_format(10^.x))
   ) +
-  labs(title = "Coeficientes del modelo en función de la regularización (Ridge)", x = "Lambda", y = "Coeficientes") +
+  labs(title = "Coeficientes del modelo en funci?n de la regularizaci?n (Ridge)", x = "Lambda", y = "Coeficientes") +
   theme_bw() +
   theme(legend.position="bottom")
 
-# ¿Cómo escoger el mejor lambda? 
-# Veamos cuál es el mejor prediciendo (fuera de muestra)
-# En este caso vamos a crear la predicción para cada uno de los
+# ?C?mo escoger el mejor lambda? 
+# Veamos cu?l es el mejor prediciendo (fuera de muestra)
+# En este caso vamos a crear la predicci?n para cada uno de los
 # 300 lambdas seleccionados
 predicciones_ridge <- predict(modelo_ridge, 
                               newx = as.matrix(X_test))
 lambdas_ridge <- modelo_ridge$lambda
 
-# Cada predicción se va a evaluar
+# Cada predicci?n se va a evaluar
 resultados_ridge <- data.frame()
 for (i in 1:length(lambdas_ridge)) {
   l <- lambdas_ridge[i]
@@ -509,14 +564,14 @@ y_hat_out3 <- predict.glmnet(modelo_ridge,
                              newx = as.matrix(X_test),
                              s = mejor_lambda_ridge)
 
-# Métricas dentro y fuera de muestra. Paquete MLmetrics
+# M?tricas dentro y fuera de muestra. Paquete MLmetrics
 r2_in3 <- R2_Score(y_pred = exp(y_hat_in3), y_true = exp(y_train))
 rmse_in3 <- RMSE(y_pred = exp(y_hat_in3), y_true = exp(y_train))
 
 r2_out3 <- R2_Score(y_pred = exp(y_hat_out3), y_true = exp(y_test))
 rmse_out3 <- RMSE(y_pred = exp(y_hat_out3), y_true = exp(y_test))
 
-# Guardamos el desempeño
+# Guardamos el desempe?o
 resultados3 <- data.frame(Modelo = "Ridge", 
                           Muestra = "Dentro",
                           R2_Score = r2_in3, RMSE = rmse_in3) %>%
@@ -524,7 +579,7 @@ resultados3 <- data.frame(Modelo = "Ridge",
                    Muestra = "Fuera",
                    R2_Score = r2_out3, RMSE = rmse_out3))
 
-# Juntamos resultados con regresión lineal y lasso
+# Juntamos resultados con regresi?n lineal y lasso
 resultados <- rbind(resultados, resultados3)
 
 library(knitr)
@@ -551,4 +606,4 @@ ggplot(plot_final, aes(x = Real, y = Predicho, color = Modelo)) +
   geom_abline(intercept = 0, slope = 1, size = 0.5, 
               linetype = "dashed") + 
   coord_fixed() +
-  labs(title = "Resultados del pronóstico")
+  labs(title = "Resultados del pron?stico")
