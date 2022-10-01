@@ -171,8 +171,8 @@ for (v in variables_categoricas) {
 
 tr_hog_d <- model.matrix(~ Clase + P5000 + P5010 + P5090 + Nper + 
                            Npersug + Ingpcug + Li + 
-                           Lp + Pobre + Depto + jefehombre + jefeformal
-                           + persxcuarto -1 , train_hogares) %>%
+                           Lp + Pobre + jefehombre + jefeformal
+                           + persxcuarto -1 , train_hogares + Depto) %>%
   as.data.frame()
 
 colnames(tr_hog_d)
@@ -220,8 +220,8 @@ for (v in variables_categoricas) {
 #Dumificamos la base
 
 te_hog_d <- model.matrix(~ Clase + P5000 + P5010 + P5090 + Nper + 
-                           Npersug + Li + Lp + Depto + jefeformal + jefehombre + 
-                           persxcuarto  
+                           Npersug + Li + Lp + jefeformal + jefehombre + 
+                           persxcuarto + Depto  
                          -1, test_hogares) %>%
   as.data.frame()
 
@@ -236,8 +236,8 @@ sumtable(tr_hog_d)
 #exportamos
 data(tr_hog_d)
 sumtable(tr_hog_d)
-vartable <- vtable(tr_hog_d,out='return')
-
+vartable1<- vtable(tr_hog_d,out='return')
+vartable1
 ##Estadisticas descriptivas test
 str_test<-str(te_hog_d)
 sumtable(te_hog_d)
@@ -612,13 +612,13 @@ ggplot(plot_final, aes(x = Real, y = Predicho, color = Modelo)) +
   coord_fixed() +
   labs(title = "Resultados del pron?stico")
 
-####Clasificación para variable binaria (Pobre)####
+####Clasificaci?n para variable binaria (Pobre)####
 
 #librerias
-## llamar la librería pacman: contiene la función p_load()
+## llamar la librer?a pacman: contiene la funci?n p_load()
 require(pacman)
 
-## p_load llama/instala-llama las librerías que se enlistan:
+## p_load llama/instala-llama las librer?as que se enlistan:
 p_load(tidyverse, caret, rio, 
        modelsummary, # tidy, msummary
        gamlr, # cv.gamlr
@@ -641,10 +641,10 @@ k1 = knn(train=x[-test,], ## base de entrenamiento
          cl=tr_hog_d$Pobre[-test], ## outcome
          k=1)        ## vecinos 
 
-#Predicción contra datos observados
+#Predicci?n contra datos observados
 tibble(tr_hog_d$Pobre[test],k1)
 
-#Matriz de confusión
+#Matriz de confusi?n
 confusionMatrix(data=k1 ,
                 reference=tr_hog_d$Pobre[test] ,
                 mode="sens_spec")
