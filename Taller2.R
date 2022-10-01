@@ -242,29 +242,30 @@ p_load(fastDummies, caret, glmnet, MLmetrics)
 
 #Dividimos train_hogares en dos
 set.seed(666)
-id_train <- sample(1:nrow(train_hogares), size = 0.7*nrow(train_hogares), 
+id_train <- sample(1:nrow(tr_hog_d), size = 0.7*nrow(tr_hog_d), 
                    replace = FALSE)
 
 train <- tr_hog_d[id_train, ]
 test  <- tr_hog_d[-id_train, ]
 
+train$Ingpcug <- ifelse(train$Ingpcug == 0, 0.000001, train$Ingpcug)
+test$Ingpcug <- ifelse(test$Ingpcug == 0, 0.000001, test$Ingpcug)
+
 # y_train y x_train
 #y_train -> modelo predicción ingreso
-y_train <- train[,"Ingpcug"]
+y_train <- log(train[,"Ingpcug"])
 #Vector de X
 X_train <- select(train, -c(Pobre, Ingpcug))
 #y_test -> modelo con ingreso per capita
-y_test <- test[,"Ingpcug"]
+y_test <- log(test[,"Ingpcug"]) 
 #Vector  de X test
 X_test <- select(test,-c(Pobre, Ingpcug)) 
+
+
 
 # Estandarizamos la base de datos. 
 # Necesitamos estandarizar
 #####Estandarización#####
-mu <- mean(y_train)
-sigma <- sd(y_train)
-y_train <- (y_train - mu)/sigma
-y_test <- (y_test - mu)/sigma
 
 mu <- mean(X_train$P5000)
 sigma <- sd(X_train$P5000)
@@ -291,13 +292,46 @@ sigma <- sd(X_train$Li)
 X_train$Li <- (X_train$Li - mu)/sigma
 X_test$Li <- (X_test$Li - mu)/sigma
 
-mu <- mean(X_train$persxcuarto)
-sigma <- sd(X_train$persxcuarto)
-X_train$persxcuarto <- (X_train$persxcuarto - mu)/sigma
-X_test$persxcuarto <- (X_test$persxcuarto - mu)/sigma
-
 glimpse(X_train)
 glimpse(X_test)
+
+####Regresión Lineal####
+# Analicemos regresión lineal
+train2 <- cbind(y_train, X_train)
+modelo_reg <- lm("y_train ~ -1 + .", data = train2)
+summary(modelo_reg)
+
+df_coeficientes_reg <- modelo_reg$coefficients %>%
+  enframe(name = "predictor", value = "coeficiente")
+
+df_coeficientes_reg %>%
+  filter(predictor != "`(Intercept)`") %>%
+  ggplot(aes(x = reorder(predictor, abs(coeficiente)), 
+             y = coeficiente)) +
+  geom_col(fill = "darkblue") +
+  coord_flip() +
+  labs(title = "Coeficientes del modelo de regresión", 
+       x = "Variables",
+       y = "Coeficientes") +
+  theme_bw()
+
+# Evaluamos el modelo de regresión lineal
+y_hat_in1 <- predict(modelo_reg, newdata = X_train)
+y_hat_out1 <- predict(modelo_reg, newdata = X_test)
+
+# Métricas dentro y fuera de muestra. Paquete MLmetrics
+r2_in1 <- R2_Score(y_pred = exp(y_hat_in1), y_true = exp(y_train))
+rmse_in1 <- RMSE(y_pred = exp(y_hat_in1), y_true = exp(y_train))
+
+r2_out1 <- R2_Score(y_pred = exp(y_hat_out1), y_true = exp(y_test))
+rmse_out1 <- RMSE(y_pred = exp(y_hat_out1), y_true = exp(y_test))
+
+resultados <- data.frame(Modelo = "Regresión lineal", 
+                         Muestra = "Dentro",
+                         R2_Score = r2_in1, RMSE = rmse_in1) %>%
+  rbind(data.frame(Modelo = "Regresión lineal", 
+                   Muestra = "Fuera",
+                   R2_Score = r2_out1, RMSE = rmse_out1))
 
 ####Lasso####
 # Para obtener un ajuste con regularización Lasso se indica argumento alpha = 1.
@@ -306,9 +340,8 @@ modelo_lasso <- glmnet(
   x = X_train,
   y = y_train,
   alpha = 1,
-  nlambda = 300,
-  standardize = FALSE,
-  na.rm = TRUE
+  nlambda = 100000,
+  standardize = FALSE
 )
 
 # Analicemos cómo cambian los coeficientes para diferentes lambdas
@@ -358,13 +391,13 @@ for (i in 1:length(lambdas_lasso)) {
                           RMSE = rmse2)
   resultados_lasso <- bind_rows(resultados_lasso, resultado)
 }
-#RMSE
+
 ggplot(resultados_lasso, aes(x = Lambda, y = RMSE)) +
   geom_point() +
   geom_line() +
   theme_bw() +
   scale_y_continuous(labels = scales::comma)
-#R2
+
 ggplot(resultados_lasso, aes(x = Lambda, y = R2_Score)) +
   geom_point() +
   geom_line() +
@@ -396,3 +429,126 @@ resultados2 <- data.frame(Modelo = "Lasso",
   rbind(data.frame(Modelo = "Lasso", 
                    Muestra = "Fuera",
                    R2_Score = r2_out2, RMSE = rmse_out2))
+
+# Juntamos resultados con regresión lineal
+resultados <- rbind(resultados, resultados2)
+
+####Ridge####
+# Ridge. Alpha = 0
+modelo_ridge <- glmnet(
+  x = X_train,
+  y = y_train,
+  alpha = 0,
+  nlambda = 300,
+  standardize = FALSE
+)
+
+# Analicemos cómo cambian los coeficientes para diferentes lambdas
+regularizacion2 <- modelo_ridge$beta %>% 
+  as.matrix() %>%
+  t() %>% 
+  as_tibble() %>%
+  mutate(lambda = modelo_ridge$lambda)
+
+regularizacion2 <- regularizacion2 %>%
+  pivot_longer(
+    cols = !lambda, 
+    names_to = "predictor",
+    values_to = "coeficientes"
+  )
+
+regularizacion2 %>%
+  ggplot(aes(x = lambda, y = coeficientes, color = predictor)) +
+  geom_line() +
+  scale_x_log10(
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10",
+                                  scales::math_format(10^.x))
+  ) +
+  labs(title = "Coeficientes del modelo en función de la regularización (Ridge)", x = "Lambda", y = "Coeficientes") +
+  theme_bw() +
+  theme(legend.position="bottom")
+
+# ¿Cómo escoger el mejor lambda? 
+# Veamos cuál es el mejor prediciendo (fuera de muestra)
+# En este caso vamos a crear la predicción para cada uno de los
+# 300 lambdas seleccionados
+predicciones_ridge <- predict(modelo_ridge, 
+                              newx = as.matrix(X_test))
+lambdas_ridge <- modelo_ridge$lambda
+
+# Cada predicción se va a evaluar
+resultados_ridge <- data.frame()
+for (i in 1:length(lambdas_ridge)) {
+  l <- lambdas_ridge[i]
+  y_hat_out3 <- predicciones_ridge[, i]
+  r23 <- R2_Score(y_pred = y_hat_out3, y_true = y_test)
+  rmse3 <- RMSE(y_pred = y_hat_out3, y_true = y_test)
+  resultado <- data.frame(Modelo = "Ridge",
+                          Muestra = "Fuera",
+                          Lambda = l,
+                          R2_Score = r23, 
+                          RMSE = rmse3)
+  resultados_ridge <- bind_rows(resultados_ridge, resultado)
+}
+
+ggplot(resultados_ridge, aes(x = Lambda, y = RMSE)) +
+  geom_point() +
+  geom_line() +
+  theme_bw() +
+  scale_y_continuous(labels = scales::comma)
+
+filtro <- resultados_ridge$RMSE == min(resultados_ridge$RMSE)
+mejor_lambda_ridge <- resultados_ridge[filtro, "Lambda"]
+
+# Guardamos el mejor Ridge
+y_hat_in3 <- predict.glmnet(modelo_ridge,
+                            newx = as.matrix(X_train),
+                            s = mejor_lambda_ridge)
+y_hat_out3 <- predict.glmnet(modelo_ridge,
+                             newx = as.matrix(X_test),
+                             s = mejor_lambda_ridge)
+
+# Métricas dentro y fuera de muestra. Paquete MLmetrics
+r2_in3 <- R2_Score(y_pred = exp(y_hat_in3), y_true = exp(y_train))
+rmse_in3 <- RMSE(y_pred = exp(y_hat_in3), y_true = exp(y_train))
+
+r2_out3 <- R2_Score(y_pred = exp(y_hat_out3), y_true = exp(y_test))
+rmse_out3 <- RMSE(y_pred = exp(y_hat_out3), y_true = exp(y_test))
+
+# Guardamos el desempeño
+resultados3 <- data.frame(Modelo = "Ridge", 
+                          Muestra = "Dentro",
+                          R2_Score = r2_in3, RMSE = rmse_in3) %>%
+  rbind(data.frame(Modelo = "Ridge", 
+                   Muestra = "Fuera",
+                   R2_Score = r2_out3, RMSE = rmse_out3))
+
+# Juntamos resultados con regresión lineal y lasso
+resultados <- rbind(resultados, resultados3)
+
+library(knitr)
+library(kableExtra)
+kable(resultados, digits = 2) %>%
+  kable_styling()
+
+plot_final <- data.frame(Modelo = "Regresion lineal", 
+                         Real = exp(y_test), 
+                         Predicho = exp(y_hat_out1)[,drop = T]) %>%
+  rbind(
+    data.frame(Modelo = "Lasso", 
+               Real = exp(y_test), 
+               Predicho = exp(y_hat_out2)[,,drop = T])
+  ) %>%
+  rbind(
+    data.frame(Modelo = "Ridge", 
+               Real = exp(y_test), 
+               Predicho = exp(y_hat_out3)[,,drop = T])
+  )
+ggplot(plot_final, aes(x = Real, y = Predicho, color = Modelo)) +
+  geom_point() +
+  theme_bw() +
+  geom_abline(intercept = 0, slope = 1, size = 0.5, 
+              linetype = "dashed") + 
+  coord_fixed() +
+  labs(title = "Resultados del pronóstico")
