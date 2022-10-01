@@ -134,14 +134,15 @@ for (v in variables_categoricas) {
 
 tr_hog_d <- model.matrix(~ Clase + P5000 + P5010 + P5090 + Nper + 
                            Npersug + Ingpcug + Li + 
-                           Lp + Pobre + Depto, train_hogares) %>%
+                           Lp + Pobre + Depto + jefehombre + jefeformal
+                           + persxcuarto , train_hogares) %>%
   as.data.frame()
 
 colnames(tr_hog_d)
 
 glimpse(tr_hog_d)
 
-
+colnames(train_hogares)
 
 ####test_hogares####
 
@@ -260,6 +261,11 @@ X_test <- select(test,-c(Pobre, Ingpcug))
 # Estandarizamos la base de datos. 
 # Necesitamos estandarizar
 #####Estandarización#####
+mu <- mean(y_train)
+sigma <- sd(y_train)
+y_train <- (y_train - mu)/sigma
+y_test <- (y_test - mu)/sigma
+
 mu <- mean(X_train$P5000)
 sigma <- sd(X_train$P5000)
 X_train$P5000 <- (X_train$P5000 - mu)/sigma
@@ -284,6 +290,11 @@ mu <- mean(X_train$Li)
 sigma <- sd(X_train$Li)
 X_train$Li <- (X_train$Li - mu)/sigma
 X_test$Li <- (X_test$Li - mu)/sigma
+
+mu <- mean(X_train$persxcuarto)
+sigma <- sd(X_train$persxcuarto)
+X_train$persxcuarto <- (X_train$persxcuarto - mu)/sigma
+X_test$persxcuarto <- (X_test$persxcuarto - mu)/sigma
 
 glimpse(X_train)
 glimpse(X_test)
