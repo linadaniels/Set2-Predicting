@@ -340,7 +340,7 @@ modelo_lasso <- glmnet(
   x = X_train,
   y = y_train,
   alpha = 1,
-  nlambda = 100000,
+  nlambda = 300,
   standardize = FALSE
 )
 
