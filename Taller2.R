@@ -658,3 +658,5 @@ cm[2,2]/sum(cm[,2]) ## Sensitivity
 cm[1,1]/sum(cm[,1]) ## Specificity
 cm[2,1]/sum(cm[2,]) ## Ratio Falsos Positivos
 cm[1,2]/sum(cm[1,]) ## Ratio Falsos Negativos
+
+
