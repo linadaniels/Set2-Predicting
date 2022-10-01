@@ -609,3 +609,50 @@ ggplot(plot_final, aes(x = Real, y = Predicho, color = Modelo)) +
               linetype = "dashed") + 
   coord_fixed() +
   labs(title = "Resultados del pron?stico")
+
+####Clasificación para variable binaria (Pobre)####
+
+#librerias
+## llamar la librería pacman: contiene la función p_load()
+require(pacman)
+
+## p_load llama/instala-llama las librerías que se enlistan:
+p_load(tidyverse, caret, rio, 
+       modelsummary, # tidy, msummary
+       gamlr, # cv.gamlr
+       class) # knn
+
+#Datos
+head(tr_hog_d)
+
+####Kvecinos####
+
+tr_hog_d[, "Pobre"] <- as.factor(tr_hog_d[, "Pobre", drop = T])
+
+set.seed(210422) ## fijar semilla
+test <- sample(x=1:164960, size=49000) ## generar observaciones aleatorias
+x <- scale(tr_hog_d[,-15]) ## reescalar variables (para calcular distancias)
+apply(x,2,sd) ## verificar
+
+k1 = knn(train=x[-test,], ## base de entrenamiento
+         test=x[test,],   ## base de testeo
+         cl=tr_hog_d$Pobre[-test], ## outcome
+         k=1)        ## vecinos 
+
+#Predicción contra datos observados
+tibble(tr_hog_d$Pobre[test],k1)
+
+#Matriz de confusión
+confusionMatrix(data=k1 ,
+                reference=tr_hog_d$Pobre[test] ,
+                mode="sens_spec")
+
+cm = confusionMatrix(data=k1 ,
+                     tr_hog_d$Pobre[test])$table
+cm
+
+(cm[1,1]+cm[2,2])/sum(cm) ## Accuracy
+cm[2,2]/sum(cm[,2]) ## Sensitivity
+cm[1,1]/sum(cm[,1]) ## Specificity
+cm[2,1]/sum(cm[2,]) ## Ratio Falsos Positivos
+cm[1,2]/sum(cm[1,]) ## Ratio Falsos Negativos
