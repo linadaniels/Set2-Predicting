@@ -171,8 +171,8 @@ for (v in variables_categoricas) {
 
 tr_hog_d <- model.matrix(~ Clase + P5000 + P5010 + P5090 + Nper + 
                            Npersug + Ingpcug + Li + 
-                           Lp + Pobre + jefehombre + jefeformal
-                           + persxcuarto -1 , train_hogares + Depto) %>%
+                           Lp + Pobre + jefehombre + jefeformal + Depto
+                           + persxcuarto -1 , train_hogares) %>%
   as.data.frame()
 
 colnames(tr_hog_d)
@@ -238,6 +238,7 @@ data(tr_hog_d)
 sumtable(tr_hog_d)
 vartable1<- vtable(tr_hog_d,out='return')
 vartable1
+
 ##Estadisticas descriptivas test
 str_test<-str(te_hog_d)
 sumtable(te_hog_d)
@@ -260,11 +261,6 @@ forward<- train(Ingpcug ~ ., data = train_hogares,
 forward 
 summary(forward)
 str<-str(forward)
-
-## out
-data(forward)
-sumtable(forward)
-vartable <- vtable(forward,out='return')
 
 
 #OLS
