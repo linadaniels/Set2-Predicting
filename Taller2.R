@@ -220,7 +220,7 @@ for (v in variables_categoricas) {
 #Dumificamos la base
 
 te_hog_d <- model.matrix(~ Clase + P5000 + P5010 + P5090 + Nper + 
-                           Npersug + Li + Lp + Depto, train_hogares) %>%
+                           Npersug + Li + Lp + Depto -1, test_hogares) %>%
   as.data.frame()
 
 colnames(te_hog_d)
